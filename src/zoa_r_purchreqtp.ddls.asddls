@@ -3,7 +3,8 @@
 @ObjectModel.sapObjectNodeType.name: 'ZOAPR_HEAD'
 @EndUserText.label: '###GENERATED Core Data Service Entity'
 define root view entity ZOA_R_PurchReqTP
-  as select from ZOA_PR_HEAD as PurchReq
+  as select from zoa_pr_head as PurchReq
+  composition [0..*] of ZOA_R_PurchReqItemTP as _Items
 {
   key pr_uuid as PrUUID,
   pr_id as PrID,
@@ -29,5 +30,6 @@ define root view entity ZOA_R_PurchReqTP
   @Semantics.systemDateTime.localInstanceLastChangedAt: true
   local_last_changed_at as LocalLastChangedAt,
   @Semantics.systemDateTime.lastChangedAt: true
-  last_changed_at as LastChangedAt
+  last_changed_at as LastChangedAt,
+  _Items
 }
