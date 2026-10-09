@@ -1,0 +1,53 @@
+managed implementation in class ZBP_OA_R_PURCHREQTP unique;
+strict ( 2 );
+with draft;
+extensible;
+define behavior for ZOA_R_PurchReqTP alias PurchReq
+persistent table ZOA_PR_HEAD
+extensible
+draft table ZOA_PR_HEAD_D
+etag master LocalLastChangedAt
+lock master total etag LastChangedAt
+authorization master( global )
+{
+  field ( readonly )
+   PrUUID,
+   CreatedBy,
+   CreatedAt,
+   LocalLastChangedBy,
+   LocalLastChangedAt,
+   LastChangedAt;
+
+  field ( numbering : managed )
+   PrUUID;
+
+
+  create;
+  update;
+  delete;
+
+  draft action Activate optimized;
+  draft action Discard;
+  draft action Edit;
+  draft action Resume;
+  draft determine action Prepare;
+
+  mapping for ZOA_PR_HEAD corresponding extensible
+  {
+    PrUUID = PR_UUID;
+    PrID = PR_ID;
+    Title = TITLE;
+    SupplierID = SUPPLIER_ID;
+    DeliveryDate = DELIVERY_DATE;
+    TotalAmount = TOTAL_AMOUNT;
+    CurrencyCode = CURRENCY_CODE;
+    Status = STATUS;
+    RejectReason = REJECT_REASON;
+    CreatedBy = CREATED_BY;
+    CreatedAt = CREATED_AT;
+    LocalLastChangedBy = LOCAL_LAST_CHANGED_BY;
+    LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
+    LastChangedAt = LAST_CHANGED_AT;
+  }
+
+}

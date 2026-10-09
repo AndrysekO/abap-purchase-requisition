@@ -1,0 +1,11 @@
+@EndUserText: {
+  label: 'Service Definition for ZOA_C_PurchReqTP'
+}
+@ObjectModel: {
+  leadingEntity: {
+    name: 'ZOA_C_PurchReqTP'
+  }
+}
+define service ZOA_UI_PURCHREQ provider contracts odata_v4_ui {
+  expose ZOA_C_PURCHREQTP as PurchReq;
+}

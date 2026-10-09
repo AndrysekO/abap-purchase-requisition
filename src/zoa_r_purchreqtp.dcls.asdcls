@@ -1,0 +1,6 @@
+@EndUserText.label: 'ZOA_R_PurchReqTP'
+@MappingRole: true
+define role ZOA_R_PurchReqTP {
+  grant select on ZOA_R_PurchReqTP
+  where TRUE;
+}

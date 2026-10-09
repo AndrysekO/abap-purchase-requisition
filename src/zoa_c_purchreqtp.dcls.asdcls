@@ -1,0 +1,6 @@
+@EndUserText.label: 'ZOA_C_PurchReqTP'
+@MappingRole: true
+define role ZOA_C_PurchReqTP {
+  grant select on ZOA_C_PurchReqTP
+  where INHERITING CONDITIONS FROM ENTITY ZOA_R_PurchReqTP REPLACING { ROOT WITH _BaseEntity };
+}
