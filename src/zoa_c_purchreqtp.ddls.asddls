@@ -1,16 +1,16 @@
 @Metadata.allowExtensions: true
 @Metadata.ignorePropagatedAnnotations: true
-@Endusertext: {
-  Label: '###GENERATED Core Data Service Entity'
+@EndUserText: {
+  label: '###GENERATED Core Data Service Entity'
 }
-@Objectmodel: {
-  Sapobjectnodetype.Name: 'ZOAPR_HEAD'
+@ObjectModel: {
+  sapObjectNodeType.name: 'ZOAPR_HEAD'
 }
 @AccessControl.authorizationCheck: #MANDATORY
 define root view entity ZOA_C_PurchReqTP
-  provider contract TRANSACTIONAL_QUERY
+  provider contract transactional_query
   as projection on ZOA_R_PurchReqTP
-  association [1..1] to ZOA_R_PurchReqTP as _BaseEntity on $projection.PRUUID = _BaseEntity.PRUUID
+  association [1..1] to ZOA_R_PurchReqTP as _BaseEntity on $projection.PrUUID = _BaseEntity.PrUUID
 {
   key PrUUID,
   PrID,
@@ -18,38 +18,39 @@ define root view entity ZOA_C_PurchReqTP
   SupplierID,
   DeliveryDate,
   @Semantics: {
-    Amount.Currencycode: 'CurrencyCode'
+    amount.currencyCode: 'CurrencyCode'
   }
   TotalAmount,
   @Consumption: {
-    Valuehelpdefinition: [ {
-      Entity.Element: 'Currency', 
-      Entity.Name: 'I_CurrencyStdVH', 
-      Useforvalidation: true
+    valueHelpDefinition: [ {
+      entity.element: 'Currency', 
+      entity.name: 'I_CurrencyStdVH', 
+      useForValidation: true
     } ]
   }
   CurrencyCode,
   Status,
   RejectReason,
   @Semantics: {
-    User.Createdby: true
+    user.createdBy: true
   }
   CreatedBy,
   @Semantics: {
-    Systemdatetime.Createdat: true
+    systemDateTime.createdAt: true
   }
   CreatedAt,
   @Semantics: {
-    User.Localinstancelastchangedby: true
+    user.localInstanceLastChangedBy: true
   }
   LocalLastChangedBy,
   @Semantics: {
-    Systemdatetime.Localinstancelastchangedat: true
+    systemDateTime.localInstanceLastChangedAt: true
   }
   LocalLastChangedAt,
   @Semantics: {
-    Systemdatetime.Lastchangedat: true
+    systemDateTime.lastChangedAt: true
   }
   LastChangedAt,
-  _BaseEntity
+  _BaseEntity,
+  _Items : redirected to composition child ZOA_C_PurchReqItemTP
 }
