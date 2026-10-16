@@ -12,6 +12,7 @@ authorization master( global )
 {
   field ( readonly )
    PrUUID,
+   Status,
    CreatedBy,
    CreatedAt,
    LocalLastChangedBy,
@@ -27,6 +28,8 @@ authorization master( global )
   delete;
 
   association _Items { create; with draft; }
+
+  determination setDefaults on modify { create; }
 
   draft action Activate optimized;
   draft action Discard;
