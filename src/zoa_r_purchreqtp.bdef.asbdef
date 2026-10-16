@@ -66,7 +66,9 @@ authorization dependent by _PurchReq
 {
   field ( readonly )
    ItemUUID,
-   PrUUID;
+   PrUUID,
+   ItemNo,
+   CurrencyCode;
 
   field ( numbering : managed )
    ItemUUID;
@@ -75,6 +77,8 @@ authorization dependent by _PurchReq
   delete;
 
   association _PurchReq { with draft; }
+
+  determination setItemDefaults on modify { create; }
 
   mapping for zoa_pr_item
   {
