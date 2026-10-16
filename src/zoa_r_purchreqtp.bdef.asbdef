@@ -26,6 +26,8 @@ authorization master( global )
   update;
   delete;
 
+  association _Items { create; with draft; }
+
   draft action Activate optimized;
   draft action Discard;
   draft action Edit;
@@ -50,4 +52,38 @@ authorization master( global )
     LastChangedAt = LAST_CHANGED_AT;
   }
 
+}
+
+define behavior for ZOA_R_PurchReqItemTP alias PurchReqItem
+persistent table zoa_pr_item
+draft table zoa_pr_item_d
+etag master LocalLastChangedAt
+lock dependent by _PurchReq
+authorization dependent by _PurchReq
+{
+  field ( readonly )
+   ItemUUID,
+   PrUUID;
+
+  field ( numbering : managed )
+   ItemUUID;
+
+  update;
+  delete;
+
+  association _PurchReq { with draft; }
+
+  mapping for zoa_pr_item
+  {
+    ItemUUID           = item_uuid;
+    PrUUID             = pr_uuid;
+    ItemNo             = item_no;
+    Description        = description;
+    Quantity           = quantity;
+    Unit               = unit;
+    UnitPrice          = unit_price;
+    ItemAmount         = item_amount;
+    CurrencyCode       = currency_code;
+    LocalLastChangedAt = local_last_changed_at;
+  }
 }
