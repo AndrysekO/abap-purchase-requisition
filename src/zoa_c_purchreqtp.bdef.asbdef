@@ -11,10 +11,21 @@ use etag
   use update;
   use delete;
 
+  use association _Items { create; with draft; }
+
   use action Edit;
   use action Activate;
   use action Discard;
   use action Resume;
   use action Prepare;
 
+}
+
+define behavior for ZOA_C_PurchReqItemTP alias PurchReqItem
+use etag
+{
+  use update;
+  use delete;
+
+  use association _PurchReq { with draft; }
 }

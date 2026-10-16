@@ -6,6 +6,8 @@
     name: 'ZOA_C_PurchReqTP'
   }
 }
-define service ZOA_UI_PURCHREQ provider contracts odata_v4_ui {
-  expose ZOA_C_PURCHREQTP as PurchReq;
+define service ZOA_UI_PURCHREQ
+  provider contracts odata_v4_ui {
+  expose ZOA_C_PurchReqTP     as PurchReq;
+  expose ZOA_C_PurchReqItemTP as PurchReqItem;
 }
