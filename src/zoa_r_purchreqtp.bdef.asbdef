@@ -13,6 +13,8 @@ authorization master( global )
   field ( readonly )
    PrUUID,
    Status,
+   TotalAmount,
+   CurrencyCode,
    CreatedBy,
    CreatedAt,
    LocalLastChangedBy,
@@ -68,6 +70,7 @@ authorization dependent by _PurchReq
    ItemUUID,
    PrUUID,
    ItemNo,
+   ItemAmount,
    CurrencyCode;
 
   field ( numbering : managed )
@@ -79,6 +82,14 @@ authorization dependent by _PurchReq
   association _PurchReq { with draft; }
 
   determination setItemDefaults on modify { create; }
+
+  determination calcAmounts on modify { create; field Quantity, UnitPrice; }
+
+  side effects
+  {
+    field Quantity affects field ItemAmount, field _PurchReq.TotalAmount;
+    field UnitPrice affects field ItemAmount, field _PurchReq.TotalAmount;
+  }
 
   mapping for zoa_pr_item
   {

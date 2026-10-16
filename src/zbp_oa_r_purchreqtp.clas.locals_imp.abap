@@ -4,6 +4,8 @@ CLASS lhc_purchreqitem DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS setItemDefaults FOR DETERMINE ON MODIFY
       keys FOR PurchReqItem~setItemDefaults.
+    METHODS calcAmounts FOR DETERMINE ON MODIFY
+      keys FOR PurchReqItem~calcAmounts.
 
 ENDCLASS.
 
@@ -56,6 +58,47 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
       ENTITY PurchReqItem
         UPDATE FIELDS ( ItemNo CurrencyCode ) WITH updates
       REPORTED DATA(update_reported).
+
+    reported = CORRESPONDING #( DEEP update_reported ).
+  ENDMETHOD.
+
+    METHOD calcAmounts.
+    " 1. Item amount = quantity × unit price
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReqItem
+        FIELDS ( Quantity UnitPrice ) WITH CORRESPONDING #( keys )
+        RESULT DATA(items)
+      ENTITY PurchReqItem BY \_PurchReq
+        FIELDS ( PrUUID ) WITH CORRESPONDING #( keys )
+        RESULT DATA(requisitions).
+
+    MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReqItem
+        UPDATE FIELDS ( ItemAmount )
+        WITH VALUE #( FOR item IN items
+                      ( %tky       = item-%tky
+                        ItemAmount = item-Quantity * item-UnitPrice ) )
+      REPORTED DATA(update_reported).
+
+    " Several changed items can belong to the same requisition
+    SORT requisitions BY PrUUID.
+    DELETE ADJACENT DUPLICATES FROM requisitions COMPARING PrUUID.
+
+    " 2. Total = sum of all item amounts, including the ones just updated
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq BY \_Items
+        FIELDS ( ItemAmount PrUUID ) WITH CORRESPONDING #( requisitions )
+        RESULT DATA(all_items).
+
+    MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        UPDATE FIELDS ( TotalAmount )
+        WITH VALUE #( FOR req IN requisitions
+          ( %tky        = req-%tky
+            TotalAmount = REDUCE decfloat34( INIT sum = CONV decfloat34( 0 )
+                                             FOR it IN all_items
+                                             WHERE ( PrUUID = req-PrUUID )
+                                             NEXT sum = sum + it-ItemAmount ) ) ).
 
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
