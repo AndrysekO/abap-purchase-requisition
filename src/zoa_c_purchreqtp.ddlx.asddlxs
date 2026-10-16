@@ -11,6 +11,14 @@ annotate view ZOA_C_PurchReqTP with
     purpose: #STANDARD, 
     position: 10 , 
     type: #IDENTIFICATION_REFERENCE
+  },
+  {
+    label: 'Items',
+    id: 'Items',
+    purpose: #STANDARD,
+    position: 20,
+    type: #LINEITEM_REFERENCE,
+    targetElement: '_Items'
   } ]
   @EndUserText.label: 'PrUUID'
   @UI.identification: [ {
