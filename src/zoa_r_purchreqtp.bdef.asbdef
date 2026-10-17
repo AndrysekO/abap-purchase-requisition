@@ -84,7 +84,8 @@ authorization dependent by _PurchReq
    PrUUID,
    ItemNo,
    ItemAmount,
-   CurrencyCode;
+   CurrencyCode,
+   Unit;
 
   field ( numbering : managed )
    ItemUUID;

@@ -44,13 +44,15 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
         ENDIF.
       ENDLOOP.
 
-      " Number the new items in steps of 10 and copy the currency
+      " Number the new items in steps of 10, copy the currency,
+      " and count everything in pieces
       LOOP AT new_items INTO DATA(new_item)
            WHERE PrUUID = requisition-PrUUID AND ItemNo IS INITIAL.
         max_no = max_no + 10.
         APPEND VALUE #( %tky         = new_item-%tky
                         ItemNo       = max_no
-                        CurrencyCode = requisition-CurrencyCode ) TO updates.
+                        CurrencyCode = requisition-CurrencyCode
+                        Unit         = 'ST' ) TO updates.
       ENDLOOP.
     ENDLOOP.
 
@@ -58,7 +60,7 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
 
     MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
-        UPDATE FIELDS ( ItemNo CurrencyCode ) WITH updates
+        UPDATE FIELDS ( ItemNo CurrencyCode Unit ) WITH updates
       REPORTED DATA(update_reported).
 
     reported = CORRESPONDING #( DEEP update_reported ).
@@ -105,16 +107,17 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
-    METHOD validateItemValues.
+      METHOD validateItemValues.
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
-        FIELDS ( Quantity UnitPrice PrUUID ) WITH CORRESPONDING #( keys )
+        FIELDS ( Quantity UnitPrice Unit PrUUID ) WITH CORRESPONDING #( keys )
       RESULT DATA(items).
 
     LOOP AT items INTO DATA(item).
       APPEND VALUE #( %tky        = item-%tky
                       %state_area = 'VALIDATE_ITEM' ) TO reported-purchreqitem.
 
+      " Rule 1: quantity must be greater than zero
       IF item-Quantity <= 0.
         APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
         APPEND VALUE #( %tky              = item-%tky
@@ -127,6 +130,20 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
                         %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
       ENDIF.
 
+      " Rule 2: items are counted in pieces, so only whole numbers
+      IF item-Quantity > 0 AND frac( item-Quantity ) <> 0.
+        APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
+        APPEND VALUE #( %tky              = item-%tky
+                        %state_area       = 'VALIDATE_ITEM'
+                        %path             = VALUE #( purchreq-%is_draft = item-%is_draft
+                                                     purchreq-PrUUID    = item-PrUUID )
+                        %msg              = new_message_with_text(
+                                              severity = if_abap_behv_message=>severity-error
+                                              text     = 'Quantity must be a whole number' )
+                        %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
+      ENDIF.
+
+      " Rule 3: unit price must be greater than zero
       IF item-UnitPrice <= 0.
         APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
         APPEND VALUE #( %tky               = item-%tky
