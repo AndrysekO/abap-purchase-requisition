@@ -205,6 +205,8 @@ CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS validateSupplier FOR VALIDATE ON SAVE
        keys FOR PurchReq~validateSupplier.
+    METHODS setPrNumber FOR DETERMINE ON SAVE
+       keys FOR PurchReq~setPrNumber.
 ENDCLASS.
 
 CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
@@ -313,6 +315,35 @@ CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
                         %element-SupplierID = if_abap_behv=>mk-on ) TO reported-purchreq.
       ENDIF.
     ENDLOOP.
+  ENDMETHOD.
+
+  METHOD setPrNumber.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        FIELDS ( PrID ) WITH CORRESPONDING #( keys )
+      RESULT DATA(requisitions).
+
+    " Only requisitions that don't have a number yet
+    DELETE requisitions WHERE PrID IS NOT INITIAL.
+    CHECK requisitions IS NOT INITIAL.
+
+    " Highest number in use so far.
+    " Phase 1: max + 1. Phase 2 replaces this with a number range,
+    " which stays correct when several users save at the same moment.
+    SELECT SINGLE FROM zoa_pr_head
+      FIELDS MAX( pr_id )
+      INTO @DATA(max_id).
+
+    " Several requisitions saved together get consecutive numbers
+    MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        UPDATE FIELDS ( PrID )
+        WITH VALUE #( FOR req IN requisitions INDEX INTO i
+                      ( %tky = req-%tky
+                        PrID = max_id + i ) )
+      REPORTED DATA(update_reported).
+
+    reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
 ENDCLASS.

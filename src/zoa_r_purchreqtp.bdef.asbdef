@@ -12,6 +12,7 @@ authorization master( global )
 {
   field ( readonly )
    PrUUID,
+   PrID,
    Status,
    TotalAmount,
    CurrencyCode,
@@ -32,6 +33,8 @@ authorization master( global )
   association _Items { create; with draft; }
 
   determination setDefaults on modify { create; }
+
+  determination setPrNumber on save { create; }
 
   field ( mandatory )
    Title,
