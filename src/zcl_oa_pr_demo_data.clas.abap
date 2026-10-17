@@ -1,3 +1,5 @@
+"! Resets the supplier master data for the purchase requisition app.
+"! Run with F9 whenever you want a clean, known set of suppliers.
 CLASS zcl_oa_pr_demo_data DEFINITION
   PUBLIC
   FINAL
@@ -28,6 +30,14 @@ CLASS zcl_oa_pr_demo_data IMPLEMENTATION.
     INSERT zoa_supplier FROM TABLE @suppliers.
 
     out->write( |{ lines( suppliers ) } suppliers inserted, 1 of them blocked (S0006).| ).
+
+    " Repair: units stored as the display code 'PC' must use the internal code 'ST'
+    UPDATE zoa_pr_item   SET unit = 'ST' WHERE unit = 'PC'.
+    DATA(fixed_active) = sy-dbcnt.
+    UPDATE zoa_pr_item_d SET unit = 'ST' WHERE unit = 'PC'.
+    DATA(fixed_draft) = sy-dbcnt.
+
+    out->write( |Repaired units: { fixed_active } saved and { fixed_draft } draft items.| ).
   ENDMETHOD.
 
 ENDCLASS.
