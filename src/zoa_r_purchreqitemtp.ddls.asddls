@@ -2,8 +2,7 @@
 @EndUserText.label: 'Purchase requisition item'
 define view entity ZOA_R_PurchReqItemTP
   as select from zoa_pr_item
-  association to parent ZOA_R_PurchReqTP as _PurchReq
-    on $projection.PrUUID = _PurchReq.PrUUID
+  association to parent ZOA_R_PurchReqTP as _PurchReq on $projection.PrUUID = _PurchReq.PrUUID
 {
   key item_uuid             as ItemUUID,
       pr_uuid               as PrUUID,
@@ -11,6 +10,10 @@ define view entity ZOA_R_PurchReqItemTP
       description           as Description,
       @Semantics.quantity.unitOfMeasure: 'Unit'
       quantity              as Quantity,
+      @Consumption.valueHelpDefinition: [ { entity: { name: 'I_UnitOfMeasureStdVH',
+                                                      element: 'UnitOfMeasure' },
+                                            useForValidation: true } ]
+
       unit                  as Unit,
       @Semantics.amount.currencyCode: 'CurrencyCode'
       unit_price            as UnitPrice,

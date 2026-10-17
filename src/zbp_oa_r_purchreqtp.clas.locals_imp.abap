@@ -7,13 +7,13 @@ CLASS lhc_purchreqitem DEFINITION INHERITING FROM cl_abap_behavior_handler.
     METHODS calcAmounts FOR DETERMINE ON MODIFY
        keys FOR PurchReqItem~calcAmounts.
     METHODS validateItemValues FOR VALIDATE ON SAVE
-      keys FOR PurchReqItem~validateItemValues.
+       keys FOR PurchReqItem~validateItemValues.
 
 ENDCLASS.
 
 CLASS lhc_purchreqitem IMPLEMENTATION.
 
-    METHOD setItemDefaults.
+  METHOD setItemDefaults.
     " 1. The new items, and the requisition each one belongs to
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
@@ -109,7 +109,7 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
-        METHOD validateItemValues.
+  METHOD validateItemValues.
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
         FIELDS ( Quantity Unit UnitPrice PrUUID ) WITH CORRESPONDING #( keys )
@@ -142,11 +142,20 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
                         %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
       ENDIF.
 
-      " Rule 2: no more decimal places than the unit allows (pieces: 0, kilograms: 3)
+      " Rule 2: the unit must exist, and the quantity may not have
+      " more decimal places than the unit allows (pieces: 0, kilograms: 3)
+      DATA(unit_message) = VALUE string( ).
       READ TABLE units WITH KEY UnitOfMeasure = item-Unit INTO DATA(unit).
-      IF sy-subrc = 0
-         AND round( val = CONV decfloat34( item-Quantity )
+      IF item-Unit IS INITIAL.
+        unit_message = 'Enter a unit'.
+      ELSEIF sy-subrc <> 0.
+        unit_message = |Unit { item-Unit } does not exist|.
+      ELSEIF round( val = CONV decfloat34( item-Quantity )
                     dec = unit-UnitOfMeasureNumberOfDecimals ) <> item-Quantity.
+        unit_message = |This unit allows at most { unit-UnitOfMeasureNumberOfDecimals } decimal places|.
+      ENDIF.
+
+      IF unit_message IS NOT INITIAL.
         APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
         APPEND VALUE #( %tky              = item-%tky
                         %state_area       = 'VALIDATE_ITEM'
@@ -154,8 +163,7 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
                                                      purchreq-PrUUID    = item-PrUUID )
                         %msg              = new_message_with_text(
                                               severity = if_abap_behv_message=>severity-error
-                                              text     = |This unit allows at most | &&
-                                                         |{ unit-UnitOfMeasureNumberOfDecimals } decimal places| )
+                                              text     = unit_message )
                         %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
       ENDIF.
 

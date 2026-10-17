@@ -4,8 +4,8 @@
 define view entity ZOA_C_PurchReqItemTP
   as projection on ZOA_R_PurchReqItemTP
 {
-  key ItemUuid,
-      PrUuid,
+  key ItemUUID,
+      PrUUID,
       ItemNo,
       Description,
       Quantity,
