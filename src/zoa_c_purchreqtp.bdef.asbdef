@@ -13,6 +13,10 @@ use etag
 
   use association _Items { create; with draft; }
 
+  use action submit;
+  use action approve;
+  use action reject;
+
   use action Edit;
   use action Activate;
   use action Discard;

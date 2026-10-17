@@ -184,7 +184,9 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
 
 ENDCLASS.
 
+*"* Header handler: logic for the purchase requisition itself
 CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
+
   PRIVATE SECTION.
     CONSTANTS:
       BEGIN OF status,
@@ -193,25 +195,43 @@ CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
         approved  TYPE zoa_pr_status VALUE 'A',
         rejected  TYPE zoa_pr_status VALUE 'R',
       END OF status.
-    METHODS:
-      get_global_authorizations FOR GLOBAL AUTHORIZATION
-        IMPORTING
-        REQUEST requested_authorizations FOR PurchReq
-        RESULT result,
-      setDefaults FOR DETERMINE ON MODIFY
-       keys FOR PurchReq~setDefaults,
-      validateDeliveryDate FOR VALIDATE ON SAVE
-       keys FOR PurchReq~validateDeliveryDate.
+
+    " Requisitions below this total (in CZK) are approved automatically on submit
+    CONSTANTS approval_limit TYPE zoa_pr_head-total_amount VALUE '10000.00'.
+
+    METHODS get_global_authorizations FOR GLOBAL AUTHORIZATION
+      IMPORTING REQUEST requested_authorizations FOR PurchReq
+      RESULT result.
+
+    METHODS setDefaults FOR DETERMINE ON MODIFY
+      IMPORTING keys FOR PurchReq~setDefaults.
+
+    METHODS setPrNumber FOR DETERMINE ON SAVE
+      IMPORTING keys FOR PurchReq~setPrNumber.
 
     METHODS validateSupplier FOR VALIDATE ON SAVE
-       keys FOR PurchReq~validateSupplier.
-    METHODS setPrNumber FOR DETERMINE ON SAVE
-       keys FOR PurchReq~setPrNumber.
+      IMPORTING keys FOR PurchReq~validateSupplier.
+
+    METHODS validateDeliveryDate FOR VALIDATE ON SAVE
+      IMPORTING keys FOR PurchReq~validateDeliveryDate.
+
+    METHODS submit FOR MODIFY
+      IMPORTING keys FOR ACTION PurchReq~submit RESULT result.
+
+    METHODS approve FOR MODIFY
+      IMPORTING keys FOR ACTION PurchReq~approve RESULT result.
+
+    METHODS reject FOR MODIFY
+      IMPORTING keys FOR ACTION PurchReq~reject RESULT result.
+
 ENDCLASS.
 
 CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
+
   METHOD get_global_authorizations.
+    " Everyone may do everything for now (portfolio simplification)
   ENDMETHOD.
+
   METHOD setDefaults.
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReq
@@ -244,28 +264,33 @@ CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
-  METHOD validateDeliveryDate.
+  METHOD setPrNumber.
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReq
-        FIELDS ( DeliveryDate ) WITH CORRESPONDING #( keys )
+        FIELDS ( PrID ) WITH CORRESPONDING #( keys )
       RESULT DATA(requisitions).
 
-    DATA(today) = cl_abap_context_info=>get_system_date( ).
+    " Only requisitions that don't have a number yet
+    DELETE requisitions WHERE PrID IS NOT INITIAL.
+    CHECK requisitions IS NOT INITIAL.
 
-    LOOP AT requisitions INTO DATA(requisition).
-      APPEND VALUE #( %tky        = requisition-%tky
-                      %state_area = 'VALIDATE_DATE' ) TO reported-purchreq.
+    " Highest number in use so far.
+    " Phase 1: max + 1. Phase 2 replaces this with a number range,
+    " which stays correct when several users save at the same moment.
+    SELECT SINGLE FROM zoa_pr_head
+      FIELDS MAX( pr_id )
+      INTO @DATA(max_id).
 
-      IF requisition-DeliveryDate IS INITIAL OR requisition-DeliveryDate <= today.
-        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
-        APPEND VALUE #( %tky                  = requisition-%tky
-                        %state_area           = 'VALIDATE_DATE'
-                        %msg                  = new_message_with_text(
-                                                  severity = if_abap_behv_message=>severity-error
-                                                  text     = 'Delivery date must be in the future' )
-                        %element-DeliveryDate = if_abap_behv=>mk-on ) TO reported-purchreq.
-      ENDIF.
-    ENDLOOP.
+    " Several requisitions saved together get consecutive numbers
+    MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        UPDATE FIELDS ( PrID )
+        WITH VALUE #( FOR req IN requisitions INDEX INTO i
+                      ( %tky = req-%tky
+                        PrID = max_id + i ) )
+      REPORTED DATA(update_reported).
+
+    reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
   METHOD validateSupplier.
@@ -317,33 +342,149 @@ CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
-  METHOD setPrNumber.
+  METHOD validateDeliveryDate.
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReq
-        FIELDS ( PrID ) WITH CORRESPONDING #( keys )
+        FIELDS ( DeliveryDate ) WITH CORRESPONDING #( keys )
       RESULT DATA(requisitions).
 
-    " Only requisitions that don't have a number yet
-    DELETE requisitions WHERE PrID IS NOT INITIAL.
-    CHECK requisitions IS NOT INITIAL.
+    DATA(today) = cl_abap_context_info=>get_system_date( ).
 
-    " Highest number in use so far.
-    " Phase 1: max + 1. Phase 2 replaces this with a number range,
-    " which stays correct when several users save at the same moment.
-    SELECT SINGLE FROM zoa_pr_head
-      FIELDS MAX( pr_id )
-      INTO @DATA(max_id).
+    LOOP AT requisitions INTO DATA(requisition).
+      " Clear this validation's old messages for the requisition
+      APPEND VALUE #( %tky        = requisition-%tky
+                      %state_area = 'VALIDATE_DATE' ) TO reported-purchreq.
 
-    " Several requisitions saved together get consecutive numbers
-    MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      IF requisition-DeliveryDate IS INITIAL OR requisition-DeliveryDate <= today.
+        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
+        APPEND VALUE #( %tky                  = requisition-%tky
+                        %state_area           = 'VALIDATE_DATE'
+                        %msg                  = new_message_with_text(
+                                                  severity = if_abap_behv_message=>severity-error
+                                                  text     = 'Delivery date must be in the future' )
+                        %element-DeliveryDate = if_abap_behv=>mk-on ) TO reported-purchreq.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD submit.
+    " The requisitions to submit, and their items (to check that there is at least one)
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReq
-        UPDATE FIELDS ( PrID )
-        WITH VALUE #( FOR req IN requisitions INDEX INTO i
-                      ( %tky = req-%tky
-                        PrID = max_id + i ) )
-      REPORTED DATA(update_reported).
+        FIELDS ( Status TotalAmount ) WITH CORRESPONDING #( keys )
+        RESULT DATA(requisitions)
+      ENTITY PurchReq BY \_Items
+        FIELDS ( PrUUID ) WITH CORRESPONDING #( keys )
+        RESULT DATA(items).
 
-    reported = CORRESPONDING #( DEEP update_reported ).
+    DATA updates TYPE TABLE FOR UPDATE zoa_r_purchreqtp\\PurchReq.
+
+    LOOP AT requisitions INTO DATA(requisition).
+      DATA(message) = VALUE string( ).
+      IF requisition-Status <> status-new.
+        message = 'Only new requisitions can be submitted'.
+      ELSEIF NOT line_exists( items[ PrUUID = requisition-PrUUID ] ).
+        message = 'Add at least one item before submitting'.
+      ENDIF.
+
+      IF message IS NOT INITIAL.
+        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
+        APPEND VALUE #( %tky = requisition-%tky
+                        %msg = new_message_with_text(
+                                 severity = if_abap_behv_message=>severity-error
+                                 text     = message ) ) TO reported-purchreq.
+      ELSE.
+        " Small requisitions are approved automatically, larger ones wait for a manager
+        APPEND VALUE #( %tky   = requisition-%tky
+                        Status = COND #( WHEN requisition-TotalAmount < approval_limit
+                                         THEN status-approved
+                                         ELSE status-submitted ) ) TO updates.
+      ENDIF.
+    ENDLOOP.
+
+    IF updates IS NOT INITIAL.
+      MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+        ENTITY PurchReq
+          UPDATE FIELDS ( Status ) WITH updates.
+    ENDIF.
+
+    " Return the updated requisitions, so the UI shows the new status
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        ALL FIELDS WITH CORRESPONDING #( keys )
+      RESULT DATA(updated).
+
+    result = VALUE #( FOR req IN updated ( %tky = req-%tky %param = req ) ).
+  ENDMETHOD.
+
+  METHOD approve.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        FIELDS ( Status ) WITH CORRESPONDING #( keys )
+      RESULT DATA(requisitions).
+
+    DATA updates TYPE TABLE FOR UPDATE zoa_r_purchreqtp\\PurchReq.
+
+    LOOP AT requisitions INTO DATA(requisition).
+      IF requisition-Status = status-submitted.
+        APPEND VALUE #( %tky = requisition-%tky Status = status-approved ) TO updates.
+      ELSE.
+        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
+        APPEND VALUE #( %tky = requisition-%tky
+                        %msg = new_message_with_text(
+                                 severity = if_abap_behv_message=>severity-error
+                                 text     = 'Only submitted requisitions can be approved' ) )
+               TO reported-purchreq.
+      ENDIF.
+    ENDLOOP.
+
+    IF updates IS NOT INITIAL.
+      MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+        ENTITY PurchReq
+          UPDATE FIELDS ( Status ) WITH updates.
+    ENDIF.
+
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        ALL FIELDS WITH CORRESPONDING #( keys )
+      RESULT DATA(updated).
+
+    result = VALUE #( FOR req IN updated ( %tky = req-%tky %param = req ) ).
+  ENDMETHOD.
+
+  METHOD reject.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        FIELDS ( Status ) WITH CORRESPONDING #( keys )
+      RESULT DATA(requisitions).
+
+    DATA updates TYPE TABLE FOR UPDATE zoa_r_purchreqtp\\PurchReq.
+
+    LOOP AT requisitions INTO DATA(requisition).
+      IF requisition-Status = status-submitted.
+        APPEND VALUE #( %tky = requisition-%tky Status = status-rejected ) TO updates.
+      ELSE.
+        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
+        APPEND VALUE #( %tky = requisition-%tky
+                        %msg = new_message_with_text(
+                                 severity = if_abap_behv_message=>severity-error
+                                 text     = 'Only submitted requisitions can be rejected' ) )
+               TO reported-purchreq.
+      ENDIF.
+    ENDLOOP.
+
+    IF updates IS NOT INITIAL.
+      MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+        ENTITY PurchReq
+          UPDATE FIELDS ( Status ) WITH updates.
+    ENDIF.
+
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        ALL FIELDS WITH CORRESPONDING #( keys )
+      RESULT DATA(updated).
+
+    result = VALUE #( FOR req IN updated ( %tky = req-%tky %param = req ) ).
   ENDMETHOD.
 
 ENDCLASS.

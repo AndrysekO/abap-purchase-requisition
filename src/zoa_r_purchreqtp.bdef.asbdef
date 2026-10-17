@@ -32,6 +32,10 @@ authorization master( global )
 
   association _Items { create; with draft; }
 
+  action submit result [1] $self;
+  action approve result [1] $self;
+  action reject result [1] $self;
+
   determination setDefaults on modify { create; }
 
   determination setPrNumber on save { create; }
