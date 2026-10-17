@@ -3,10 +3,10 @@
 define view entity ZOA_R_PurchReqItemTP
   as select from zoa_pr_item
   association to parent ZOA_R_PurchReqTP as _PurchReq
-    on $projection.PrUuid = _PurchReq.PrUUID
+    on $projection.PrUUID = _PurchReq.PrUUID
 {
-  key item_uuid             as ItemUuid,
-      pr_uuid               as PrUuid,
+  key item_uuid             as ItemUUID,
+      pr_uuid               as PrUUID,
       item_no               as ItemNo,
       description           as Description,
       @Semantics.quantity.unitOfMeasure: 'Unit'

@@ -84,8 +84,7 @@ authorization dependent by _PurchReq
    PrUUID,
    ItemNo,
    ItemAmount,
-   CurrencyCode,
-   Unit;
+   CurrencyCode;
 
   field ( numbering : managed )
    ItemUUID;
@@ -108,9 +107,10 @@ authorization dependent by _PurchReq
    field ( mandatory )
    Description,
    Quantity,
+   Unit,
    UnitPrice;
 
-  validation validateItemValues on save { create; field Quantity, UnitPrice; }
+  validation validateItemValues on save { create; field Quantity, Unit, UnitPrice; }
 
   mapping for zoa_pr_item
   {

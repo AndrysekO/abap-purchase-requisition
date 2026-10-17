@@ -13,11 +13,11 @@ ENDCLASS.
 
 CLASS lhc_purchreqitem IMPLEMENTATION.
 
-  METHOD setItemDefaults.
+    METHOD setItemDefaults.
     " 1. The new items, and the requisition each one belongs to
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
-        FIELDS ( ItemNo PrUUID ) WITH CORRESPONDING #( keys )
+        FIELDS ( ItemNo PrUUID Unit ) WITH CORRESPONDING #( keys )
         RESULT DATA(new_items)
       ENTITY PurchReqItem BY \_PurchReq
         FIELDS ( CurrencyCode ) WITH CORRESPONDING #( keys )
@@ -45,14 +45,16 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
       ENDLOOP.
 
       " Number the new items in steps of 10, copy the currency,
-      " and count everything in pieces
+      " and default the unit to pieces if none was given
       LOOP AT new_items INTO DATA(new_item)
            WHERE PrUUID = requisition-PrUUID AND ItemNo IS INITIAL.
         max_no = max_no + 10.
         APPEND VALUE #( %tky         = new_item-%tky
                         ItemNo       = max_no
                         CurrencyCode = requisition-CurrencyCode
-                        Unit         = 'ST' ) TO updates.
+                        Unit         = COND #( WHEN new_item-Unit IS INITIAL
+                                               THEN 'ST'    " internal code for piece
+                                               ELSE new_item-Unit ) ) TO updates.
       ENDLOOP.
     ENDLOOP.
 
@@ -107,13 +109,23 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
-      METHOD validateItemValues.
+        METHOD validateItemValues.
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
-        FIELDS ( Quantity UnitPrice Unit PrUUID ) WITH CORRESPONDING #( keys )
+        FIELDS ( Quantity Unit UnitPrice PrUUID ) WITH CORRESPONDING #( keys )
       RESULT DATA(items).
 
+    " Allowed decimal places per unit, from SAP's unit configuration (one select for all)
+    IF items IS NOT INITIAL.
+      SELECT FROM I_UnitOfMeasure
+        FIELDS UnitOfMeasure, UnitOfMeasureNumberOfDecimals
+        FOR ALL ENTRIES IN @items
+        WHERE UnitOfMeasure = @items-Unit
+        INTO TABLE @DATA(units).
+    ENDIF.
+
     LOOP AT items INTO DATA(item).
+      " Clear this validation's old messages for the item
       APPEND VALUE #( %tky        = item-%tky
                       %state_area = 'VALIDATE_ITEM' ) TO reported-purchreqitem.
 
@@ -130,8 +142,11 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
                         %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
       ENDIF.
 
-      " Rule 2: items are counted in pieces, so only whole numbers
-      IF item-Quantity > 0 AND frac( item-Quantity ) <> 0.
+      " Rule 2: no more decimal places than the unit allows (pieces: 0, kilograms: 3)
+      READ TABLE units WITH KEY UnitOfMeasure = item-Unit INTO DATA(unit).
+      IF sy-subrc = 0
+         AND round( val = CONV decfloat34( item-Quantity )
+                    dec = unit-UnitOfMeasureNumberOfDecimals ) <> item-Quantity.
         APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
         APPEND VALUE #( %tky              = item-%tky
                         %state_area       = 'VALIDATE_ITEM'
@@ -139,7 +154,8 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
                                                      purchreq-PrUUID    = item-PrUUID )
                         %msg              = new_message_with_text(
                                               severity = if_abap_behv_message=>severity-error
-                                              text     = 'Quantity must be a whole number' )
+                                              text     = |This unit allows at most | &&
+                                                         |{ unit-UnitOfMeasureNumberOfDecimals } decimal places| )
                         %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
       ENDIF.
 
