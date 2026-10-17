@@ -3,15 +3,17 @@ CLASS lhc_purchreqitem DEFINITION INHERITING FROM cl_abap_behavior_handler.
   PRIVATE SECTION.
 
     METHODS setItemDefaults FOR DETERMINE ON MODIFY
-      keys FOR PurchReqItem~setItemDefaults.
+       keys FOR PurchReqItem~setItemDefaults.
     METHODS calcAmounts FOR DETERMINE ON MODIFY
-      keys FOR PurchReqItem~calcAmounts.
+       keys FOR PurchReqItem~calcAmounts.
+    METHODS validateItemValues FOR VALIDATE ON SAVE
+      keys FOR PurchReqItem~validateItemValues.
 
 ENDCLASS.
 
 CLASS lhc_purchreqitem IMPLEMENTATION.
 
-    METHOD setItemDefaults.
+  METHOD setItemDefaults.
     " 1. The new items, and the requisition each one belongs to
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
@@ -62,7 +64,7 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
-    METHOD calcAmounts.
+  METHOD calcAmounts.
     " 1. Item amount = quantity × unit price
     READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
       ENTITY PurchReqItem
@@ -103,6 +105,42 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
     reported = CORRESPONDING #( DEEP update_reported ).
   ENDMETHOD.
 
+    METHOD validateItemValues.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReqItem
+        FIELDS ( Quantity UnitPrice PrUUID ) WITH CORRESPONDING #( keys )
+      RESULT DATA(items).
+
+    LOOP AT items INTO DATA(item).
+      APPEND VALUE #( %tky        = item-%tky
+                      %state_area = 'VALIDATE_ITEM' ) TO reported-purchreqitem.
+
+      IF item-Quantity <= 0.
+        APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
+        APPEND VALUE #( %tky              = item-%tky
+                        %state_area       = 'VALIDATE_ITEM'
+                        %path             = VALUE #( purchreq-%is_draft = item-%is_draft
+                                                     purchreq-PrUUID    = item-PrUUID )
+                        %msg              = new_message_with_text(
+                                              severity = if_abap_behv_message=>severity-error
+                                              text     = 'Quantity must be greater than zero' )
+                        %element-Quantity = if_abap_behv=>mk-on ) TO reported-purchreqitem.
+      ENDIF.
+
+      IF item-UnitPrice <= 0.
+        APPEND VALUE #( %tky = item-%tky ) TO failed-purchreqitem.
+        APPEND VALUE #( %tky               = item-%tky
+                        %state_area        = 'VALIDATE_ITEM'
+                        %path              = VALUE #( purchreq-%is_draft = item-%is_draft
+                                                      purchreq-PrUUID    = item-PrUUID )
+                        %msg               = new_message_with_text(
+                                               severity = if_abap_behv_message=>severity-error
+                                               text     = 'Unit price must be greater than zero' )
+                        %element-UnitPrice = if_abap_behv=>mk-on ) TO reported-purchreqitem.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
 ENDCLASS.
 
 CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
@@ -120,7 +158,12 @@ CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
         REQUEST requested_authorizations FOR PurchReq
         RESULT result,
       setDefaults FOR DETERMINE ON MODIFY
-       keys FOR PurchReq~setDefaults.
+       keys FOR PurchReq~setDefaults,
+      validateDeliveryDate FOR VALIDATE ON SAVE
+       keys FOR PurchReq~validateDeliveryDate.
+
+    METHODS validateSupplier FOR VALIDATE ON SAVE
+       keys FOR PurchReq~validateSupplier.
 ENDCLASS.
 
 CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
@@ -156,6 +199,79 @@ CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
       REPORTED DATA(update_reported).
 
     reported = CORRESPONDING #( DEEP update_reported ).
+  ENDMETHOD.
+
+  METHOD validateDeliveryDate.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        FIELDS ( DeliveryDate ) WITH CORRESPONDING #( keys )
+      RESULT DATA(requisitions).
+
+    DATA(today) = cl_abap_context_info=>get_system_date( ).
+
+    LOOP AT requisitions INTO DATA(requisition).
+      APPEND VALUE #( %tky        = requisition-%tky
+                      %state_area = 'VALIDATE_DATE' ) TO reported-purchreq.
+
+      IF requisition-DeliveryDate IS INITIAL OR requisition-DeliveryDate <= today.
+        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
+        APPEND VALUE #( %tky                  = requisition-%tky
+                        %state_area           = 'VALIDATE_DATE'
+                        %msg                  = new_message_with_text(
+                                                  severity = if_abap_behv_message=>severity-error
+                                                  text     = 'Delivery date must be in the future' )
+                        %element-DeliveryDate = if_abap_behv=>mk-on ) TO reported-purchreq.
+      ENDIF.
+    ENDLOOP.
+  ENDMETHOD.
+
+  METHOD validateSupplier.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        FIELDS ( SupplierID ) WITH CORRESPONDING #( keys )
+      RESULT DATA(requisitions).
+
+    " Collect each supplier ID once, then read them all with ONE select
+    DATA supplier_ids TYPE SORTED TABLE OF zoa_supplier-supplier_id WITH UNIQUE KEY table_line.
+    LOOP AT requisitions INTO DATA(req) WHERE SupplierID IS NOT INITIAL.
+      INSERT req-SupplierID INTO TABLE supplier_ids.
+    ENDLOOP.
+
+    IF supplier_ids IS NOT INITIAL.
+      SELECT FROM zoa_i_supplier
+        FIELDS SupplierId, IsBlocked
+        FOR ALL ENTRIES IN @supplier_ids
+        WHERE SupplierId = @supplier_ids-table_line
+        INTO TABLE @DATA(suppliers).
+    ENDIF.
+
+    LOOP AT requisitions INTO DATA(requisition).
+      " Clear this validation's old messages for the requisition
+      APPEND VALUE #( %tky        = requisition-%tky
+                      %state_area = 'VALIDATE_SUPPLIER' ) TO reported-purchreq.
+
+      DATA(message) = VALUE string( ).
+      IF requisition-SupplierID IS INITIAL.
+        message = 'Enter a supplier'.
+      ELSE.
+        READ TABLE suppliers WITH KEY SupplierId = requisition-SupplierID INTO DATA(supplier).
+        IF sy-subrc <> 0.
+          message = |Supplier { requisition-SupplierID } does not exist|.
+        ELSEIF supplier-IsBlocked = abap_true.
+          message = |Supplier { requisition-SupplierID } is blocked|.
+        ENDIF.
+      ENDIF.
+
+      IF message IS NOT INITIAL.
+        APPEND VALUE #( %tky = requisition-%tky ) TO failed-purchreq.
+        APPEND VALUE #( %tky                = requisition-%tky
+                        %state_area         = 'VALIDATE_SUPPLIER'
+                        %msg                = new_message_with_text(
+                                                severity = if_abap_behv_message=>severity-error
+                                                text     = message )
+                        %element-SupplierID = if_abap_behv=>mk-on ) TO reported-purchreq.
+      ENDIF.
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.

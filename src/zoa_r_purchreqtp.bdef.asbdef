@@ -33,11 +33,24 @@ authorization master( global )
 
   determination setDefaults on modify { create; }
 
+  field ( mandatory )
+   Title,
+   SupplierID,
+   DeliveryDate;
+
+  validation validateSupplier on save { create; field SupplierID; }
+  validation validateDeliveryDate on save { create; field DeliveryDate; }
+
   draft action Activate optimized;
   draft action Discard;
   draft action Edit;
   draft action Resume;
-  draft determine action Prepare;
+  draft determine action Prepare
+  {
+    validation validateSupplier;
+    validation validateDeliveryDate;
+    validation PurchReqItem~validateItemValues;
+  }
 
   mapping for ZOA_PR_HEAD corresponding extensible
   {
@@ -90,6 +103,13 @@ authorization dependent by _PurchReq
     field Quantity affects field ItemAmount, field _PurchReq.TotalAmount;
     field UnitPrice affects field ItemAmount, field _PurchReq.TotalAmount;
   }
+
+   field ( mandatory )
+   Description,
+   Quantity,
+   UnitPrice;
+
+  validation validateItemValues on save { create; field Quantity, UnitPrice; }
 
   mapping for zoa_pr_item
   {
