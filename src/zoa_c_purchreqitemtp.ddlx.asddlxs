@@ -11,10 +11,10 @@ annotate view ZOA_C_PurchReqItemTP with
                  position: 10 } ]
 
   @UI.hidden: true
-  ItemUuid;
+  ItemUUID;
 
   @UI.hidden: true
-  PrUuid;
+  PrUUID;
 
   @EndUserText.label: 'Item'
   @UI: { lineItem: [ { position: 10 } ], identification: [ { position: 10 } ] }
