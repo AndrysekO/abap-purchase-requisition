@@ -9,4 +9,5 @@ define view entity ZOA_I_PRStatusVH
       @Semantics.text: true
       text                               as StatusText
 }
-where language = $session.system_language
+where
+  language = $session.system_language

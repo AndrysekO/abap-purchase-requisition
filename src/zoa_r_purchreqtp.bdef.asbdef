@@ -3,27 +3,28 @@ strict ( 2 );
 with draft;
 extensible;
 define behavior for ZOA_R_PurchReqTP alias PurchReq
-persistent table ZOA_PR_HEAD
+persistent table zoa_pr_head
 extensible
-draft table ZOA_PR_HEAD_D
+draft table zoa_pr_head_d
 etag master LocalLastChangedAt
 lock master total etag LastChangedAt
-authorization master( global )
+authorization master ( global )
 {
   field ( readonly )
-   PrUUID,
-   PrID,
-   Status,
-   TotalAmount,
-   CurrencyCode,
-   CreatedBy,
-   CreatedAt,
-   LocalLastChangedBy,
-   LocalLastChangedAt,
-   LastChangedAt;
+  PrUUID,
+  PrID,
+  Status,
+  TotalAmount,
+  CurrencyCode,
+  RejectReason,
+  CreatedBy,
+  CreatedAt,
+  LocalLastChangedBy,
+  LocalLastChangedAt,
+  LastChangedAt;
 
   field ( numbering : managed )
-   PrUUID;
+  PrUUID;
 
 
   create;
@@ -41,9 +42,9 @@ authorization master( global )
   determination setPrNumber on save { create; }
 
   field ( mandatory )
-   Title,
-   SupplierID,
-   DeliveryDate;
+  Title,
+  SupplierID,
+  DeliveryDate;
 
   validation validateSupplier on save { create; field SupplierID; }
   validation validateDeliveryDate on save { create; field DeliveryDate; }
@@ -59,23 +60,23 @@ authorization master( global )
     validation PurchReqItem~validateItemValues;
   }
 
-  mapping for ZOA_PR_HEAD corresponding extensible
-  {
-    PrUUID = PR_UUID;
-    PrID = PR_ID;
-    Title = TITLE;
-    SupplierID = SUPPLIER_ID;
-    DeliveryDate = DELIVERY_DATE;
-    TotalAmount = TOTAL_AMOUNT;
-    CurrencyCode = CURRENCY_CODE;
-    Status = STATUS;
-    RejectReason = REJECT_REASON;
-    CreatedBy = CREATED_BY;
-    CreatedAt = CREATED_AT;
-    LocalLastChangedBy = LOCAL_LAST_CHANGED_BY;
-    LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
-    LastChangedAt = LAST_CHANGED_AT;
-  }
+  mapping for zoa_pr_head corresponding extensible
+    {
+      PrUUID             = PR_UUID;
+      PrID               = PR_ID;
+      Title              = TITLE;
+      SupplierID         = SUPPLIER_ID;
+      DeliveryDate       = DELIVERY_DATE;
+      TotalAmount        = TOTAL_AMOUNT;
+      CurrencyCode       = CURRENCY_CODE;
+      Status             = STATUS;
+      RejectReason       = REJECT_REASON;
+      CreatedBy          = CREATED_BY;
+      CreatedAt          = CREATED_AT;
+      LocalLastChangedBy = LOCAL_LAST_CHANGED_BY;
+      LocalLastChangedAt = LOCAL_LAST_CHANGED_AT;
+      LastChangedAt      = LAST_CHANGED_AT;
+    }
 
 }
 
@@ -87,14 +88,14 @@ lock dependent by _PurchReq
 authorization dependent by _PurchReq
 {
   field ( readonly )
-   ItemUUID,
-   PrUUID,
-   ItemNo,
-   ItemAmount,
-   CurrencyCode;
+  ItemUUID,
+  PrUUID,
+  ItemNo,
+  ItemAmount,
+  CurrencyCode;
 
   field ( numbering : managed )
-   ItemUUID;
+  ItemUUID;
 
   update;
   delete;
@@ -111,25 +112,25 @@ authorization dependent by _PurchReq
     field UnitPrice affects field ItemAmount, field _PurchReq.TotalAmount;
   }
 
-   field ( mandatory )
-   Description,
-   Quantity,
-   Unit,
-   UnitPrice;
+  field ( mandatory )
+  Description,
+  Quantity,
+  Unit,
+  UnitPrice;
 
   validation validateItemValues on save { create; field Quantity, Unit, UnitPrice; }
 
   mapping for zoa_pr_item
-  {
-    ItemUUID           = item_uuid;
-    PrUUID             = pr_uuid;
-    ItemNo             = item_no;
-    Description        = description;
-    Quantity           = quantity;
-    Unit               = unit;
-    UnitPrice          = unit_price;
-    ItemAmount         = item_amount;
-    CurrencyCode       = currency_code;
-    LocalLastChangedAt = local_last_changed_at;
-  }
+    {
+      ItemUUID           = item_uuid;
+      PrUUID             = pr_uuid;
+      ItemNo             = item_no;
+      Description        = description;
+      Quantity           = quantity;
+      Unit               = unit;
+      UnitPrice          = unit_price;
+      ItemAmount         = item_amount;
+      CurrencyCode       = currency_code;
+      LocalLastChangedAt = local_last_changed_at;
+    }
 }

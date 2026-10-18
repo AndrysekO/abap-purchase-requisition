@@ -1,15 +1,15 @@
-class ZBP_OA_C_PURCHREQTP definition
-  public
-  abstract
-  final
-  for behavior of ZOA_C_PURCHREQTP .
+CLASS zbp_oa_c_purchreqtp DEFINITION
+  PUBLIC
+  ABSTRACT
+  FINAL
+  FOR BEHAVIOR OF zoa_c_purchreqtp .
 
-public section.
-protected section.
-private section.
+  PUBLIC SECTION.
+  PROTECTED SECTION.
+  PRIVATE SECTION.
 ENDCLASS.
 
 
 
-CLASS ZBP_OA_C_PURCHREQTP IMPLEMENTATION.
+CLASS zbp_oa_c_purchreqtp IMPLEMENTATION.
 ENDCLASS.

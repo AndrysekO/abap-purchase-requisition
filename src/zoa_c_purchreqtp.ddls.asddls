@@ -40,7 +40,7 @@ define root view entity ZOA_C_PurchReqTP
       @Consumption.valueHelpDefinition: [ { entity: { name: 'ZOA_I_PRStatusVH',
                                                       element: 'Status' } } ]
       Status,
-      _Status.StatusText as StatusText,
+      _Status.StatusText     as StatusText,
 
       RejectReason,
 

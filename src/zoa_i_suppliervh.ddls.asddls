@@ -13,4 +13,5 @@ define view entity ZOA_I_SupplierVH
       City,
       Country
 }
-where IsBlocked <> 'X'
+where
+  IsBlocked <> 'X'
