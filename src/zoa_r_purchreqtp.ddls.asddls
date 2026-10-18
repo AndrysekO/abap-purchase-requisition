@@ -1,10 +1,12 @@
 @AccessControl.authorizationCheck: #MANDATORY
 @Metadata.allowExtensions: true
 @ObjectModel.sapObjectNodeType.name: 'ZOAPR_HEAD'
-@EndUserText.label: '###GENERATED Core Data Service Entity'
+@EndUserText.label: 'Purchase requisition'
 define root view entity ZOA_R_PurchReqTP
   as select from zoa_pr_head as PurchReq
   composition [0..*] of ZOA_R_PurchReqItemTP as _Items
+  association [0..1] to ZOA_I_Supplier       as _Supplier on $projection.SupplierID = _Supplier.SupplierId
+  association [0..1] to ZOA_I_PRStatusVH     as _Status   on $projection.Status     = _Status.Status
 {
   key pr_uuid as PrUUID,
   pr_id as PrID,
@@ -14,8 +16,8 @@ define root view entity ZOA_R_PurchReqTP
   @Semantics.amount.currencyCode: 'CurrencyCode'
   total_amount as TotalAmount,
   @Consumption.valueHelpDefinition: [ {
-    entity.name: 'I_CurrencyStdVH', 
-    entity.element: 'Currency', 
+    entity.name: 'I_CurrencyStdVH',
+    entity.element: 'Currency',
     useForValidation: true
   } ]
   currency_code as CurrencyCode,
@@ -31,5 +33,9 @@ define root view entity ZOA_R_PurchReqTP
   local_last_changed_at as LocalLastChangedAt,
   @Semantics.systemDateTime.lastChangedAt: true
   last_changed_at as LastChangedAt,
-  _Items
+
+  // Associations
+  _Items,
+  _Supplier,
+  _Status
 }

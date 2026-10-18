@@ -1,184 +1,94 @@
 @Metadata.layer: #CORE
-@UI.headerInfo.title.type: #STANDARD
-@UI.headerInfo.title.value: 'PrUUID'
-@UI.headerInfo.description.type: #STANDARD
-@UI.headerInfo.description.value: 'PrUUID'
+@UI.headerInfo: { typeName: 'Purchase Requisition',
+                  typeNamePlural: 'Purchase Requisitions',
+                  title: { type: #STANDARD, value: 'Title' },
+                  description: { type: #STANDARD, value: 'PrID' } }
 annotate view ZOA_C_PurchReqTP with
 {
-  @UI.facet: [ {
-    label: 'General Information',
-    id: 'GeneralInfo',
-    purpose: #STANDARD,
-    position: 10 ,
-    type: #IDENTIFICATION_REFERENCE
-  },
-  {
-    label: 'Items',
-    id: 'Items',
-    purpose: #STANDARD,
-    position: 20,
-    type: #LINEITEM_REFERENCE,
-    targetElement: '_Items'
-  } ]
-  @EndUserText.label: 'PrUUID'
-  @UI.identification: [ {
-    position: 10 ,
-    label: 'PrUUID'
-  } ]
-  @UI.lineItem: [ {
-    position: 10 ,
-    label: 'PrUUID'
-  } ]
-  @UI.selectionField: [ {
-    position: 10
-  } ]
+  @UI.facet: [ { label: 'General Information',
+                 id: 'GeneralInfo',
+                 purpose: #STANDARD,
+                 position: 10,
+                 type: #IDENTIFICATION_REFERENCE },
+               { label: 'Items',
+                 id: 'Items',
+                 purpose: #STANDARD,
+                 position: 20,
+                 type: #LINEITEM_REFERENCE,
+                 targetElement: '_Items' } ]
+
+  @UI.hidden: true
   PrUUID;
 
-  @EndUserText.label: 'Requisition'
-  @UI.identification: [ { position: 20 , label: 'Requisition' },
-                        { type: #FOR_ACTION, dataAction: 'submit',  label: 'Submit' },
-                        { type: #FOR_ACTION, dataAction: 'approve', label: 'Approve' },
-                        { type: #FOR_ACTION, dataAction: 'reject',  label: 'Reject' } ]
-  @UI.lineItem: [ { position: 20 , label: 'Requisition' },
+  @EndUserText.label: 'Requisition No.'
+  @UI.lineItem: [ { position: 10, importance: #HIGH },
                   { type: #FOR_ACTION, dataAction: 'submit',  label: 'Submit' },
                   { type: #FOR_ACTION, dataAction: 'approve', label: 'Approve' },
                   { type: #FOR_ACTION, dataAction: 'reject',  label: 'Reject' } ]
-  @UI.selectionField: [ { position: 20 } ]
+  @UI.identification: [ { position: 10 },
+                        { type: #FOR_ACTION, dataAction: 'submit',  label: 'Submit' },
+                        { type: #FOR_ACTION, dataAction: 'approve', label: 'Approve' },
+                        { type: #FOR_ACTION, dataAction: 'reject',  label: 'Reject' } ]
+  @UI.selectionField: [ { position: 10 } ]
   PrID;
 
   @EndUserText.label: 'Title'
-  @UI.identification: [ {
-    position: 30 ,
-    label: 'Title'
-  } ]
-  @UI.lineItem: [ {
-    position: 30 ,
-    label: 'Title'
-  } ]
-  @UI.selectionField: [ {
-    position: 30
-  } ]
+  @UI.lineItem: [ { position: 20, importance: #HIGH } ]
+  @UI.identification: [ { position: 20 } ]
   Title;
 
-  @EndUserText.label: 'SupplierID'
-  @UI.identification: [ {
-    position: 40 ,
-    label: 'SupplierID'
-  } ]
-  @UI.lineItem: [ {
-    position: 40 ,
-    label: 'SupplierID'
-  } ]
-  @UI.selectionField: [ {
-    position: 40
-  } ]
+  @EndUserText.label: 'Supplier'
+  @UI.lineItem: [ { position: 30, importance: #HIGH } ]
+  @UI.identification: [ { position: 30 } ]
+  @UI.selectionField: [ { position: 20 } ]
   SupplierID;
 
-  @EndUserText.label: 'DeliveryDate'
-  @UI.identification: [ {
-    position: 50 ,
-    label: 'DeliveryDate'
-  } ]
-  @UI.lineItem: [ {
-    position: 50 ,
-    label: 'DeliveryDate'
-  } ]
-  @UI.selectionField: [ {
-    position: 50
-  } ]
+  @UI.hidden: true
+  SupplierName;
+
+  @EndUserText.label: 'Delivery Date'
+  @UI.lineItem: [ { position: 40 } ]
+  @UI.identification: [ { position: 40 } ]
   DeliveryDate;
 
-  @EndUserText.label: 'TotalAmount'
-  @UI.identification: [ {
-    position: 60 ,
-    label: 'TotalAmount'
-  } ]
-  @UI.lineItem: [ {
-    position: 60 ,
-    label: 'TotalAmount'
-  } ]
-  @UI.selectionField: [ {
-    position: 60
-  } ]
+  @EndUserText.label: 'Total'
+  @UI.lineItem: [ { position: 50, importance: #HIGH } ]
+  @UI.identification: [ { position: 50 } ]
   TotalAmount;
 
-  @UI.identification: [ {
-    position: 70
-  } ]
-  @UI.lineItem: [ {
-    position: 70
-  } ]
-  @UI.selectionField: [ {
-    position: 70
-  } ]
+  @UI.hidden: true
+  CurrencyCode;
+
+  @EndUserText.label: 'Status'
+  @UI.textArrangement: #TEXT_ONLY
+  @UI.lineItem: [ { position: 60, importance: #HIGH } ]
+  @UI.identification: [ { position: 60 } ]
+  @UI.selectionField: [ { position: 30 } ]
   Status;
 
-  @EndUserText.label: 'RejectReason'
-  @UI.identification: [ {
-    position: 80 ,
-    label: 'RejectReason'
-  } ]
-  @UI.lineItem: [ {
-    position: 80 ,
-    label: 'RejectReason'
-  } ]
-  @UI.selectionField: [ {
-    position: 80
-  } ]
+  @UI.hidden: true
+  StatusText;
+
+  @EndUserText.label: 'Reject Reason'
+  @UI.identification: [ { position: 70 } ]
   RejectReason;
 
-  @UI.identification: [ {
-    position: 90
-  } ]
-  @UI.lineItem: [ {
-    position: 90
-  } ]
-  @UI.selectionField: [ {
-    position: 90
-  } ]
+  @EndUserText.label: 'Requested By'
+  @UI.lineItem: [ { position: 70 } ]
+  @UI.identification: [ { position: 80 } ]
+  @UI.selectionField: [ { position: 40 } ]
   CreatedBy;
 
-  @UI.identification: [ {
-    position: 100
-  } ]
-  @UI.lineItem: [ {
-    position: 100
-  } ]
-  @UI.selectionField: [ {
-    position: 100
-  } ]
+  @EndUserText.label: 'Created At'
+  @UI.identification: [ { position: 90 } ]
   CreatedAt;
 
-  @UI.identification: [ {
-    position: 110
-  } ]
-  @UI.lineItem: [ {
-    position: 110
-  } ]
-  @UI.selectionField: [ {
-    position: 110
-  } ]
+  @UI.hidden: true
   LocalLastChangedBy;
 
-  @UI.identification: [ {
-    position: 120
-  } ]
-  @UI.lineItem: [ {
-    position: 120
-  } ]
-  @UI.selectionField: [ {
-    position: 120
-  } ]
+  @UI.hidden: true
   LocalLastChangedAt;
 
-  @UI.identification: [ {
-    position: 130
-  } ]
-  @UI.lineItem: [ {
-    position: 130
-  } ]
-  @UI.selectionField: [ {
-    position: 130
-  } ]
+  @UI.hidden: true
   LastChangedAt;
 }
