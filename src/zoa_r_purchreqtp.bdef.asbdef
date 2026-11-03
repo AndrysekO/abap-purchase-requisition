@@ -29,13 +29,13 @@ authorization master ( global )
 
   create;
   update;
-  delete;
+  delete ( features : instance );
 
   association _Items { create; with draft; }
 
-  action submit result [1] $self;
-  action approve result [1] $self;
-  action reject result [1] $self;
+  action ( features : instance ) submit result [1] $self;
+  action ( features : instance ) approve result [1] $self;
+  action ( features : instance ) reject result [1] $self;
 
   determination setDefaults on modify { create; }
 
@@ -51,7 +51,7 @@ authorization master ( global )
 
   draft action Activate optimized;
   draft action Discard;
-  draft action Edit;
+  draft action ( features : instance ) Edit;
   draft action Resume;
   draft determine action Prepare
   {

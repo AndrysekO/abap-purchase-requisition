@@ -223,6 +223,8 @@ CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
     METHODS reject FOR MODIFY
       IMPORTING keys FOR ACTION PurchReq~reject RESULT result.
+    METHODS get_instance_features FOR INSTANCE FEATURES
+      keys REQUEST requested_features FOR PurchReq RESULT result.
 
 ENDCLASS.
 
@@ -485,6 +487,35 @@ CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
       RESULT DATA(updated).
 
     result = VALUE #( FOR req IN updated ( %tky = req-%tky %param = req ) ).
+  ENDMETHOD.
+
+  METHOD get_instance_features.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+        ENTITY PurchReq
+          FIELDS ( Status ) WITH CORRESPONDING #( keys )
+        RESULT DATA(requisitions)
+        FAILED failed.
+    LOOP AT requisitions INTO DATA(requisition).
+      DATA(when_new) = if_abap_behv=>fc-o-disabled.
+      IF requisition-Status = status-new.
+        when_new = if_abap_behv=>fc-o-enabled.
+      ENDIF.
+      DATA(can_submit) = if_abap_behv=>fc-o-disabled.
+      DATA(can_decide) = if_abap_behv=>fc-o-disabled.
+      IF requisition-%is_draft = if_abap_behv=>mk-off.
+        IF requisition-Status = status-new.
+          can_submit = if_abap_behv=>fc-o-enabled.
+        ELSEIF requisition-Status = status-submitted.
+          can_decide = if_abap_behv=>fc-o-enabled.
+        ENDIF.
+      ENDIF.
+      APPEND VALUE #( %tky            = requisition-%tky
+                      %action-Edit    = when_new
+                      %delete         = when_new
+                      %action-submit  = can_submit
+                      %action-approve = can_decide
+                      %action-reject  = can_decide ) TO result.
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.
