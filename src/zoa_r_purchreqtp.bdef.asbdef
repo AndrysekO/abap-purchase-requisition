@@ -41,6 +41,8 @@ authorization master ( global )
 
   determination setPrNumber on save { create; }
 
+  determination recalcTotal on save { create; }
+
   field ( mandatory )
   Title,
   SupplierID,
@@ -55,6 +57,7 @@ authorization master ( global )
   draft action Resume;
   draft determine action Prepare
   {
+    determination ( always ) recalcTotal;
     validation validateSupplier;
     validation validateDeliveryDate;
     validation PurchReqItem~validateItemValues;

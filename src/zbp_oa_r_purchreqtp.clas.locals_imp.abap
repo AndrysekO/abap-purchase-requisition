@@ -182,6 +182,7 @@ CLASS lhc_purchreqitem IMPLEMENTATION.
     ENDLOOP.
   ENDMETHOD.
 
+
 ENDCLASS.
 
 *"* Header handler: logic for the purchase requisition itself
@@ -225,6 +226,8 @@ CLASS lhc_zoa_r_purchreqtp DEFINITION INHERITING FROM cl_abap_behavior_handler.
       IMPORTING keys FOR ACTION PurchReq~reject RESULT result.
     METHODS get_instance_features FOR INSTANCE FEATURES
       keys REQUEST requested_features FOR PurchReq RESULT result.
+    METHODS recalctotal FOR DETERMINE ON SAVE
+       keys FOR purchreq~recalctotal.
 
 ENDCLASS.
 
@@ -516,6 +519,23 @@ CLASS lhc_zoa_r_purchreqtp IMPLEMENTATION.
                       %action-approve = can_decide
                       %action-reject  = can_decide ) TO result.
     ENDLOOP.
+  ENDMETHOD.
+
+  METHOD recalcTotal.
+    READ ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+        ENTITY PurchReq BY \_Items
+          FIELDS ( ItemAmount PrUUID ) WITH CORRESPONDING #( keys )
+        RESULT DATA(items).
+
+    MODIFY ENTITIES OF zoa_r_purchreqtp IN LOCAL MODE
+      ENTITY PurchReq
+        UPDATE FIELDS ( TotalAmount )
+        WITH VALUE #( FOR key IN keys
+                      ( %tky        = key-%tky
+                        TotalAmount = REDUCE decfloat34( INIT sum = CONV decfloat34( 0 )
+                                                         FOR item IN items
+                                                         WHERE ( PrUUID = key-PrUUID )
+                                                         NEXT sum = sum + item-ItemAmount ) ) ).
   ENDMETHOD.
 
 ENDCLASS.
